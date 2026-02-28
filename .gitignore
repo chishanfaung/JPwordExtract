@@ -1,0 +1,5 @@
+重启人生txt/
+__pycache__/
+*.xlsx
+build/
+.gradle/
