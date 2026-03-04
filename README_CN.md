@@ -147,7 +147,71 @@ python3 extract_learning_words.py
     *   命令行工具使用。
     *   更多代码示例。
 
-## 7. 项目结构与数据来源
+## 8. 常见分词处理逻辑 (Common Logic)
+
+本项目包含多种针对不同场景的分词处理脚本，其核心逻辑已被抽象为可复用的模式。你可以将以下逻辑描述复制给 AI 助手，让它在其他 IDE 中快速复现相同的功能。
+
+### 核心分类逻辑 (Word Categorization)
+
+我们将分词结果分为三类，用于筛选有学习价值的词汇：
+
+1.  **高频词 (High Frequency / Basic)**
+    *   **定义**: 存在于 `Small` 词典中的非专有名词。
+    *   **含义**: 极高频的基础词汇（如 `私`, `食べる`, `行く`），通常无需刻意背诵。
+    *   **技术实现**: `tokenizer_small.tokenize(word)` 能成功分出且词面一致。
+
+2.  **推荐学习词 (Recommended / Advanced)**
+    *   **定义**: **不在** `Small` 词典中，**但在** `Full` 词典中，且**不是**专有名词。
+    *   **含义**: 中高级词汇、复合词（如 `感染症`, `機能性`），是学习的重点。
+    *   **技术实现**: 排除 HighFreq 和 ProperNoun 后的剩余实词。
+
+3.  **专有名词 (Proper Noun)**
+    *   **定义**: 词性 (Part of Speech) 为 `固有名詞`。
+    *   **含义**: 人名、地名、机构名（如 `鬼滅の刃`, `東京都`）。
+    *   **技术实现**: `m.part_of_speech()[1] == '固有名詞'`。
+
+4.  **忽略 (Ignore)**
+    *   **定义**: 无实际语义的功能词或符号。
+    *   **范围**: 助词、助动词、记号、辅助记号、感叹词、连体词、接续词、接头/接尾辞、空白。
+    *   **特殊**: 排除非自立语（如 `ている` 中的 `いる`）。
+
+### 预处理与后处理 (Pre/Post Processing)
+
+*   **预处理**:
+    *   **全角归一化**: 使用 `unicodedata.normalize('NFKC', text)` 将半角假名/字母转为全角，确保分词准确性。
+*   **后处理**:
+    *   **发音转换**: Sudachi 默认返回片假名读音，建议转换为平假名（`chr(code - 0x60)`）以适合学习。
+    *   **OOV 过滤**: 对于纯中文或乱码，Sudachi 会标记为 OOV (Out of Vocabulary)，应直接丢弃或标记为“纯中文”。
+
+---
+
+## 9. 跨平台使用指南 (Mac to Windows)
+
+如果你将本项目发送给 Windows 用户，请注意以下几点：
+
+### 1. 环境安装
+对方需要安装 Python，并执行以下命令安装依赖：
+```bash
+pip install -r requirements.txt
+# 必须安装词典数据
+pip install sudachidict_core sudachidict_small sudachidict_full
+```
+
+### 2. 编码问题 (Encoding)
+*   **读取/保存文件**: 脚本中已强制指定 `encoding='utf-8'` 或 `encoding='utf-8-sig'` (用于 Excel CSV)。
+*   **控制台乱码**: Windows CMD 默认是 GBK 编码。如果打印日语出现乱码，请在 CMD 中执行 `chcp 65001` 切换到 UTF-8 模式。
+
+### 3. 路径分隔符
+*   脚本中使用了 `os.path.join`，因此可以自动兼容 Mac (`/`) 和 Windows (`\`) 的路径分隔符。
+*   **注意**: 如果你在代码中硬编码了路径（如 `"/Users/name/..."`），请务必改为相对路径（如 `./data/`）。
+
+### 4. Excel 兼容性
+*   生成的 `.xlsx` 文件完全兼容 Windows 版 Microsoft Excel。
+*   生成的 `.csv` 文件使用了 `utf-8-sig` 编码，双击打开不会乱码。
+
+---
+
+## 10. 项目结构与数据来源
 - **数据来源**: UniDic 和 NEologd (部分)。
 - **构建方式**: 使用 Gradle 自动从 S3 下载原始 CSV 并编译。
     - 运行 `./gradlew build` 可在本地生成 `.dic` 文件。
